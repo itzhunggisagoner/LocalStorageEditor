@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Storage Tweaks</title>
+
+  <link rel="stylesheet" href="popup.css">
+
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0"
+  >
+</head>
+
+<body>
+  <header>
+    <div>
+      <h1>Local Storage</h1>
+      <span id="domain">Loading...</span>
+    </div>
+
+    <button id="refresh" title="Refresh">
+      <span class="material-symbols-outlined">refresh</span>
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="material-symbols-outlined">search</span>
+
+      <input
+        id="search"
+        type="text"
+        placeholder="Search..."
+        autocomplete="off"
+      >
+    </div>
+
+    <button id="demo" title="Create demo storage">
+      <span class="material-symbols-outlined">data_object</span>
+    </button>
+
+    <button id="add" title="Add item">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+  </div>
+
+  <main id="storage"></main>
+
+  <footer>
+    <span id="count">0 items</span>
+
+    <button id="clear" title="Reset local storage">
+      <span class="material-symbols-outlined">delete_sweep</span>
+      <span>Reset</span>
+    </button>
+  </footer>
+
+  <section class="credits">
+    <span>Credits</span>
+
+    <a
+      href="https://github.com/itzhunggisagoner"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Created by hunggisagoner
+    </a>
+
+    <a
+      href="https://github.com/itzhunggisagoner/LocalStorageEditor"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span>Star this repo</span>
+      <span class="material-symbols-outlined">star</span>
+    </a>
+  </section>
+
+  <div id="modal" class="modal hidden">
+    <div class="dialog">
+      <div class="dialog-header">
+        <h2 id="modal-title">Add item</h2>
+
+        <button id="close" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <label for="key">Key</label>
+
+      <input
+        id="key"
+        type="text"
+        autocomplete="off"
+        placeholder="exampleKey"
+      >
+
+      <label for="value">Value</label>
+
+      <textarea
+        id="value"
+        spellcheck="false"
+        placeholder="exampleValue"
+      ></textarea>
+
+      <div class="dialog-actions">
+        <button id="cancel">Cancel</button>
+        <button id="save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
