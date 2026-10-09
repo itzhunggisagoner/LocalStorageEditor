@@ -5,5 +5,4 @@
 ## Download
 - You can download at [Release Page](https://github.com/itzhunggisagoner/LocalStorageEditor/releases)
 
-
-- This project is licensed under [MIT License](https://github.com/itzhunggisagoner/LocalStorageEditor/LICENSE)
+- This project is licensed under [MIT License](https://github.com/itzhunggisagoner/LocalStorageEditor/blob/main/LICENSE)
