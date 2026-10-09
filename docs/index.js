@@ -2,32 +2,12 @@ let editingKey = null;
 
 const $ = (id) => document.getElementById(id);
 
-async function execute(func, args = []) {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    currentWindow: true
-  });
-
-  if (!tab?.id) {
-    throw new Error("No active tab.");
-  }
-
-  const results = await chrome.scripting.executeScript({
-    target: {
-      tabId: tab.id
-    },
-    func,
-    args
-  });
-
-  return results[0]?.result;
-}
-
 async function getStorage() {
   const data = {};
 
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
+
     if (key !== null) {
       data[key] = localStorage.getItem(key);
     }
@@ -45,16 +25,20 @@ async function saveStorage(key, value, oldKey = null) {
   }
 
   localStorage.setItem(key, value);
+
   return true;
 }
 
 async function deleteStorage(key) {
   localStorage.removeItem(key);
+
   return true;
 }
 
 async function clearStorage() {
   localStorage.clear();
+  localStorage.setItem('_demo_initialized', 'true');
+
   return true;
 }
 
@@ -265,4 +249,13 @@ $("demo").addEventListener("click", async () => {
   }
 });
 
-load();
+async function init() {
+  if (!localStorage.getItem('_demo_initialized')) {
+    await createDemoStorage();
+    localStorage.setItem('_demo_initialized', 'true');
+  }
+
+  await load();
+}
+
+init();
