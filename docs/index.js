@@ -24,73 +24,59 @@ async function execute(func, args = []) {
 }
 
 async function getStorage() {
-  return execute(() => {
-    const data = {};
+  const data = {};
 
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-
-      if (key !== null) {
-        data[key] = localStorage.getItem(key);
-      }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key !== null) {
+      data[key] = localStorage.getItem(key);
     }
+  }
 
-    return {
-      origin: location.origin,
-      data
-    };
-  });
+  return {
+    origin: location.origin,
+    data
+  };
 }
 
 async function saveStorage(key, value, oldKey = null) {
-  return execute((key, value, oldKey) => {
-    if (oldKey && oldKey !== key) {
-      localStorage.removeItem(oldKey);
-    }
+  if (oldKey && oldKey !== key) {
+    localStorage.removeItem(oldKey);
+  }
 
-    localStorage.setItem(key, value);
-
-    return true;
-  }, [key, value, oldKey]);
+  localStorage.setItem(key, value);
+  return true;
 }
 
 async function deleteStorage(key) {
-  return execute((key) => {
-    localStorage.removeItem(key);
-
-    return true;
-  }, [key]);
+  localStorage.removeItem(key);
+  return true;
 }
 
 async function clearStorage() {
-  return execute(() => {
-    localStorage.clear();
-
-    return true;
-  });
+  localStorage.clear();
+  return true;
 }
 
 async function createDemoStorage() {
-  return execute(() => {
-    const demoStorage = {
-      README: "This is a demo localStorage. You can edit or delete these values.",
-      EditMe: "Change this value!",
-      Test: "Hello Local Storage Tweaks",
-      Example: "example value",
-      Username: "Guest",
-      Message: "Edit me to test the editor.",
-      Number: "12345",
-      Boolean: "true",
-      JSON: '{"name":"Guest","level":1,"premium":false}',
-      Empty: ""
-    };
+  const demoStorage = {
+    README: "This is a demo localStorage. You can edit or delete these values.",
+    EditMe: "Change this value!",
+    Test: "Hello Local Storage Tweaks",
+    Example: "example value",
+    Username: "Guest",
+    Message: "Edit me to test the editor.",
+    Number: "12345",
+    Boolean: "true",
+    JSON: '{"name":"Guest","level":1,"premium":false}',
+    Empty: ""
+  };
 
-    for (const [key, value] of Object.entries(demoStorage)) {
-      localStorage.setItem(key, value);
-    }
+  for (const [key, value] of Object.entries(demoStorage)) {
+    localStorage.setItem(key, value);
+  }
 
-    return true;
-  });
+  return true;
 }
 
 function openModal(key = "", value = "") {
