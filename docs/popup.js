@@ -5,6 +5,7 @@ const bandStops = ["#f5d590", "#f0a97a", "#e88d80", "#d2678a", "#a95390", "#6e48
 let items = {};
 let editingKey = null;
 let toastTimer = null;
+let settle = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -67,6 +68,24 @@ function showToast(message, good = false) {
 
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => box.classList.add("hidden"), 2600);
+}
+
+function ask(title, text, okLabel) {
+  $("confirm-title").textContent = title;
+  $("confirm-text").textContent = text;
+  $("confirm-yes").textContent = okLabel;
+  $("confirm").classList.remove("hidden");
+  $("confirm-no").focus();
+
+  return new Promise((resolve) => {
+    settle = resolve;
+  });
+}
+
+function answer(yes) {
+  $("confirm").classList.add("hidden");
+  settle?.(yes);
+  settle = null;
 }
 
 function bandColor(i, total) {
@@ -168,6 +187,8 @@ function render() {
 
     const remove = iconButton("action delete", "Delete", "trash");
     remove.addEventListener("click", async () => {
+      if (!(await ask("Delete this item?", `"${key}" will be removed from this site's storage.`, "Delete"))) return;
+
       try {
         await run("remove", key);
         await load();
@@ -210,7 +231,7 @@ async function saveItem() {
   }
 
   const clash = key !== editingKey && key in items;
-  if (clash && !confirm(`"${key}" already exists. Replace its value?`)) return;
+  if (clash && !(await ask("Replace existing key?", `"${key}" already exists. Its value will be overwritten.`, "Replace"))) return;
 
   try {
     await run("save", key, value, editingKey);
@@ -232,7 +253,7 @@ function formatJson() {
 
 async function clearAll() {
   if (!Object.keys(items).length) return;
-  if (!confirm("Delete every localStorage item for this site?")) return;
+  if (!(await ask("Clear everything?", "Every localStorage item for this site will be deleted.", "Clear all"))) return;
 
   try {
     await run("clear");
@@ -251,12 +272,25 @@ $("save").addEventListener("click", saveItem);
 $("format").addEventListener("click", formatJson);
 $("clear").addEventListener("click", clearAll);
 
+$("confirm-yes").addEventListener("click", () => answer(true));
+$("confirm-no").addEventListener("click", () => answer(false));
+
 $("modal").addEventListener("click", (e) => {
   if (e.target === $("modal")) closeModal();
 });
 
+$("confirm").addEventListener("click", (e) => {
+  if (e.target === $("confirm")) answer(false);
+});
+
 document.addEventListener("keydown", (e) => {
+  const asking = !$("confirm").classList.contains("hidden");
   const open = !$("modal").classList.contains("hidden");
+
+  if (asking) {
+    if (e.key === "Escape") answer(false);
+    return;
+  }
 
   if (e.key === "Escape" && open) closeModal();
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && open) saveItem();
