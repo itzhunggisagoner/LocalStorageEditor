@@ -1,16 +1,25 @@
 {
   "manifest_version": 3,
   "name": "localStorage Editor",
-  "version": "1.0.0",
-  "description": "A minimal and lightweight LocalStorage viewer and editor.",
+  "version": "1.1.0",
+  "description": "View, search, edit and clear the localStorage of any site, right from the toolbar.",
   "permissions": [
     "scripting",
     "activeTab"
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_title": "localStorage Editor",
+    "default_icon": {
+      "16": "resources/icon-16.png",
+      "32": "resources/icon-32.png",
+      "48": "resources/icon-48.png"
+    }
   },
   "icons": {
-    "128": "icon.png"
+    "16": "resources/icon-16.png",
+    "32": "resources/icon-32.png",
+    "48": "resources/icon-48.png",
+    "128": "resources/icon-128.png"
   }
 }

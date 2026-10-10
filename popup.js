@@ -1,237 +1,267 @@
+const inExtension = typeof chrome !== "undefined" && Boolean(chrome.scripting);
+
+const bandStops = ["#f5d590", "#f0a97a", "#e88d80", "#d2678a", "#a95390", "#6e4896"];
+
+let items = {};
 let editingKey = null;
+let toastTimer = null;
 
 const $ = (id) => document.getElementById(id);
 
-async function execute(func, args = []) {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    currentWindow: true
-  });
+function storageOp(action, key, value, oldKey) {
+  try {
+    const ls = window.localStorage;
 
-  if (!tab?.id) {
-    throw new Error("No active tab.");
+    if (action === "read") {
+      const data = {};
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i);
+        data[k] = ls.getItem(k);
+      }
+      return { ok: true, origin: location.origin, data };
+    }
+
+    if (action === "save") {
+      ls.setItem(key, value);
+      if (oldKey && oldKey !== key) ls.removeItem(oldKey);
+    } else if (action === "remove") {
+      ls.removeItem(key);
+    } else if (action === "clear") {
+      ls.clear();
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const full = err.name === "QuotaExceededError";
+    return { ok: false, error: full ? "Storage is full for this site." : err.message };
+  }
+}
+
+async function run(...args) {
+  let result;
+
+  if (inExtension) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error("There's no active tab.");
+
+    const [injected] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: storageOp,
+      args
+    });
+    result = injected?.result;
+  } else {
+    result = storageOp(...args);
   }
 
-  const results = await chrome.scripting.executeScript({
-    target: {
-      tabId: tab.id
-    },
-    func,
-    args
-  });
-
-  return results[0]?.result;
+  if (!result) throw new Error("Chrome won't let extensions touch this page.");
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }
 
-async function getStorage() {
-  return execute(() => {
-    const data = {};
+function showToast(message, good = false) {
+  const box = $("toast");
+  box.textContent = message;
+  box.style.borderLeftColor = good ? "var(--sand)" : "var(--danger)";
+  box.classList.remove("hidden");
 
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      data[key] = localStorage.getItem(key);
-    }
-
-    return {
-      origin: location.origin,
-      data
-    };
-  });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.add("hidden"), 2600);
 }
 
-async function saveStorage(key, value, oldKey = null) {
-  return execute((key, value, oldKey) => {
-    if (oldKey && oldKey !== key) {
-      localStorage.removeItem(oldKey);
-    }
+function bandColor(i, total) {
+  if (total < 2) return bandStops[0];
 
-    localStorage.setItem(key, value);
+  const pos = (i / (total - 1)) * (bandStops.length - 1);
+  const lo = Math.floor(pos);
+  const hi = Math.min(lo + 1, bandStops.length - 1);
+  const t = pos - lo;
 
-    return true;
-  }, [key, value, oldKey]);
+  const a = bandStops[lo].match(/\w\w/g).map((h) => parseInt(h, 16));
+  const b = bandStops[hi].match(/\w\w/g).map((h) => parseInt(h, 16));
+
+  return `rgb(${a.map((v, n) => Math.round(v + (b[n] - v) * t)).join(",")})`;
 }
 
-async function deleteStorage(key) {
-  return execute((key) => {
-    localStorage.removeItem(key);
-
-    return true;
-  }, [key]);
+function make(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
 
-async function clearStorage() {
-  return execute(() => {
-    localStorage.clear();
-
-    return true;
-  });
+function iconButton(className, label, icon) {
+  const btn = make("button", className);
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.innerHTML = `<svg class="icon"><use href="#i-${icon}"/></svg>`;
+  return btn;
 }
 
 function openModal(key = "", value = "") {
   editingKey = key || null;
 
-  $("modal-title").textContent = editingKey
-    ? "Edit item"
-    : "Add item";
-
+  $("modal-title").textContent = editingKey ? "Edit item" : "Add item";
   $("key").value = key;
   $("value").value = value;
 
   $("modal").classList.remove("hidden");
-  $("key").focus();
+  (editingKey ? $("value") : $("key")).focus();
 }
 
 function closeModal() {
   $("modal").classList.add("hidden");
-
   editingKey = null;
-
-  $("key").value = "";
-  $("value").value = "";
 }
 
-function render(data) {
-  const container = $("storage");
-  const search = $("search").value.toLowerCase();
+function setCount(n) {
+  $("count").textContent = `${n} item${n === 1 ? "" : "s"}`;
+}
 
-  const entries = Object.entries(data).filter(([key, value]) => {
-    return (
-      key.toLowerCase().includes(search) ||
-      String(value).toLowerCase().includes(search)
-    );
+function showEmpty(title, hint) {
+  const box = make("div", "empty");
+  box.append(make("strong", "", title), hint);
+  $("storage").replaceChildren(box);
+}
+
+function render() {
+  const term = $("search").value.trim().toLowerCase();
+  const all = Object.entries(items);
+  const shown = all.filter(([k, v]) => {
+    return k.toLowerCase().includes(term) || v.toLowerCase().includes(term);
   });
 
-  container.innerHTML = "";
+  setCount(all.length);
 
-  if (!entries.length) {
-    container.innerHTML = `
-      <div class="empty">
-        ${search ? "No matching items" : "No local storage items"}
-      </div>
-    `;
+  if (!all.length) {
+    showEmpty("Nothing stored here", "This site hasn't saved anything to localStorage yet. Hit Add to create the first key.");
+    return;
   }
 
-  for (const [key, value] of entries) {
-    const item = document.createElement("div");
-    item.className = "item";
+  if (!shown.length) {
+    showEmpty("No matches", `Nothing has "${$("search").value.trim()}" in its key or value.`);
+    return;
+  }
 
-    const keyElement = document.createElement("div");
-    keyElement.className = "key";
-    keyElement.textContent = key;
-    keyElement.title = key;
+  const rows = shown.map(([key, value], i) => {
+    const row = make("div", "item");
+    row.style.setProperty("--band", bandColor(i, shown.length));
 
-    const valueElement = document.createElement("div");
-    valueElement.className = "value";
-    valueElement.textContent = value;
-    valueElement.title = value;
+    const keyEl = make("div", "key", key);
+    keyEl.title = key;
 
-    const actions = document.createElement("div");
-    actions.className = "actions";
+    const valueEl = make("div", value ? "value" : "value blank", value || "empty string");
+    if (value) valueEl.title = value;
 
-    const edit = document.createElement("button");
-    edit.className = "action";
-    edit.title = "Edit";
-    edit.innerHTML = `
-      <span class="material-symbols-outlined">edit</span>
-    `;
+    const edit = iconButton("action", "Edit", "edit");
+    edit.addEventListener("click", () => openModal(key, value));
 
-    edit.addEventListener("click", () => {
-      openModal(key, value);
+    const copy = iconButton("action", "Copy value", "copy");
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(value);
+        showToast("Value copied.", true);
+      } catch {
+        showToast("Couldn't reach the clipboard.");
+      }
     });
 
-    const remove = document.createElement("button");
-    remove.className = "action delete";
-    remove.title = "Delete";
-    remove.innerHTML = `
-      <span class="material-symbols-outlined">delete</span>
-    `;
-
+    const remove = iconButton("action delete", "Delete", "trash");
     remove.addEventListener("click", async () => {
-      await deleteStorage(key);
-      await load();
+      try {
+        await run("remove", key);
+        await load();
+      } catch (err) {
+        showToast(err.message);
+      }
     });
 
-    actions.append(edit, remove);
-    item.append(keyElement, valueElement, actions);
-    container.appendChild(item);
-  }
+    const actions = make("div", "actions");
+    actions.append(edit, copy, remove);
 
-  $("count").textContent =
-    `${Object.keys(data).length} item${Object.keys(data).length === 1 ? "" : "s"}`;
+    row.append(keyEl, valueEl, actions);
+    return row;
+  });
+
+  $("storage").replaceChildren(...rows);
 }
 
 async function load() {
   try {
-    const result = await getStorage();
-
-    $("domain").textContent = result.origin;
-
-    render(result.data);
-  } catch {
-    $("domain").textContent = "Cannot access this page";
-
-    $("storage").innerHTML = `
-      <div class="empty">
-        This page cannot be accessed.
-      </div>
-    `;
-
-    $("count").textContent = "0 items";
+    const res = await run("read");
+    items = res.data;
+    $("domain").textContent = res.origin;
+    render();
+  } catch (err) {
+    items = {};
+    $("domain").textContent = "Can't open this page";
+    setCount(0);
+    showEmpty("This tab is off limits", err.message + " Try a regular website.");
   }
 }
 
-$("refresh").addEventListener("click", load);
-
-$("search").addEventListener("input", load);
-
-$("add").addEventListener("click", () => {
-  openModal();
-});
-
-$("close").addEventListener("click", closeModal);
-
-$("cancel").addEventListener("click", closeModal);
-
-$("save").addEventListener("click", async () => {
-  const key = $("key").value;
+async function saveItem() {
+  const key = $("key").value.trim();
   const value = $("value").value;
 
-  if (!key.trim()) {
+  if (!key) {
     $("key").focus();
     return;
   }
 
+  const clash = key !== editingKey && key in items;
+  if (clash && !confirm(`"${key}" already exists. Replace its value?`)) return;
+
   try {
-    await saveStorage(key, value, editingKey);
-
+    await run("save", key, value, editingKey);
     closeModal();
-
     await load();
-  } catch (error) {
-    alert(error.message);
+  } catch (err) {
+    showToast(err.message);
   }
+}
+
+function formatJson() {
+  try {
+    const parsed = JSON.parse($("value").value);
+    $("value").value = JSON.stringify(parsed, null, 2);
+  } catch {
+    showToast("That value isn't valid JSON.");
+  }
+}
+
+async function clearAll() {
+  if (!Object.keys(items).length) return;
+  if (!confirm("Delete every localStorage item for this site?")) return;
+
+  try {
+    await run("clear");
+    await load();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+$("refresh").addEventListener("click", load);
+$("search").addEventListener("input", render);
+$("add").addEventListener("click", () => openModal());
+$("close").addEventListener("click", closeModal);
+$("cancel").addEventListener("click", closeModal);
+$("save").addEventListener("click", saveItem);
+$("format").addEventListener("click", formatJson);
+$("clear").addEventListener("click", clearAll);
+
+$("modal").addEventListener("click", (e) => {
+  if (e.target === $("modal")) closeModal();
 });
 
-$("clear").addEventListener("click", async () => {
-  const result = await getStorage();
+document.addEventListener("keydown", (e) => {
+  const open = !$("modal").classList.contains("hidden");
 
-  if (!Object.keys(result.data).length) {
-    return;
-  }
-
-  if (!confirm("Clear all local storage?")) {
-    return;
-  }
-
-  await clearStorage();
-
-  await load();
+  if (e.key === "Escape" && open) closeModal();
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && open) saveItem();
 });
 
-$("modal").addEventListener("click", (event) => {
-  if (event.target === $("modal")) {
-    closeModal();
-  }
-});
+window.addEventListener("storage-edited", load);
 
 load();
