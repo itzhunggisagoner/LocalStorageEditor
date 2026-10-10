@@ -436,6 +436,24 @@ a {
   padding: 0 20px;
 }
 
+.confirm {
+  z-index: 8;
+}
+
+.confirm .dialog {
+  border-top-color: var(--danger);
+}
+
+.confirm p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.primary.danger {
+  background: var(--danger);
+}
+
 #toast {
   position: absolute;
   left: 14px;
