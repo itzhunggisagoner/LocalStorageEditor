@@ -58,9 +58,9 @@ The interface uses Torus. Put `Torus.otf` in `resources/` (and `docs/resources/`
 
 ## Credits
 
-Created by me [itzhunggisagoner](https://github.com/itzhunggisagoner)
-Logo and website inspired by [Geode SDK homepage](https://geode-sdk.org)
-This project use generative AI to code review and advice.
+- Created by me [itzhunggisagoner](https://github.com/itzhunggisagoner)
+- Logo and website inspired by [Geode SDK homepage](https://geode-sdk.org)
+- This project use generative AI to code review and advice.
 
 ## License
 
