@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/itzhunggisagoner/LocalStorageEditor/releases">Download</a> Â·
-  <a href="https://itzhunggisagoner.github.io/LocalStorageEditor/">Try it online</a> Â·
+  <a href="https://github.com/itzhunggisagoner/LocalStorageEditor/releases">Download</a>·
+  <a href="https://itzhunggisagoner.github.io/LocalStorageEditor/">Try it online</a>·
   <a href="LICENSE">MIT License</a>
 </p>
 
